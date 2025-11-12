@@ -16,9 +16,9 @@ urlpatterns = [
     # Order Management
     path('orders/', views.OrderList.as_view()),
     path('orders/<int:pk>/', views.OrderDetail.as_view()),
-    path('orders/bulk-upload/', views.OrderBulkUploadView.as_view()),
+    path('orders/bulk-upload/', views.OrderBulkUploadView.as_view(), name='bulk-upload'),
     
     path('tasks/', views.TaskListView.as_view()),
-    path('tasks/<str:task_id>/', views.TaskStatusView.as_view()),
+    path('tasks/<str:task_id>/', views.TaskStatusView.as_view(),name='task-status'),
 ]
 

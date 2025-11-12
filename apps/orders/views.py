@@ -428,13 +428,13 @@ class TaskStatusView(APIView):
             
             TaskTracker.objects.get(user=request.user, task_id=task_id)
         except TaskTracker.DoesNotExist:
-            logger.warning(f"User {request.user} tried to access unauthorized or missing task {task_id}")
+            logger.warning(f"User {request.user} tried to access invalid task {task_id}")
             response = {
                 "success": False,
                 "status_code": status.HTTP_404_NOT_FOUND,
-                "message": "Task not found or permission denied.",
+                "message": "Task not found .",
                 "data": None,
-                "errors": {"detail": "A task with this ID was not found for the current user."}
+                "errors": {"detail": "A task with this ID was not found."}
             }
             return Response(response, status=status.HTTP_404_NOT_FOUND)
 
