@@ -17,7 +17,7 @@ from .serializers import UserSerializer, CustomerSerializer, OrderSerializer,Use
 from .function import start_task
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .task import process_bulk_orders_csv, process_bulk_orders_json
-
+import logging
 
 
 
@@ -286,6 +286,7 @@ class OrderDetail(APIView):
 #         }
 #         return Response(response, status=status.HTTP_202_ACCEPTED)
 
+logger = logging.getLogger(__name__)
 
 class OrderBulkUploadView(APIView):
     parser_classes = (JSONParser, MultiPartParser, FormParser)
@@ -306,7 +307,8 @@ class OrderBulkUploadView(APIView):
                     "data": None, "errors": {"detail": "File encoding is not valid."}
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            transaction.on_commit(lambda: start_task(request, csv_content_string, process_bulk_orders_csv))
+            # transaction.on_commit(lambda: start_task(request, csv_content_string, process_bulk_orders_csv))
+            task_id = start_task(request, csv_content_string, process_bulk_orders_csv)
 
         else:
             orders_data = request.data
@@ -318,13 +320,14 @@ class OrderBulkUploadView(APIView):
                     "data": None, "errors": {"detail": "The provided JSON body is not a list."}
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            transaction.on_commit(lambda: start_task(request, orders_data, process_bulk_orders_json))
+            # transaction.on_commit(lambda: start_task(request, orders_data, process_bulk_orders_json))
+            task_id = start_task(request, orders_data, process_bulk_orders_json)
 
         return Response({
             "success": True,
             "status_code": status.HTTP_202_ACCEPTED,
             "message": "Your bulk order request has been accepted and is being processed.",
-            "data": None,
+            "data": task_id,
             "errors": None
         }, status=status.HTTP_202_ACCEPTED)
 
