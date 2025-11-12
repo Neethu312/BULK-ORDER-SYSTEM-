@@ -42,6 +42,8 @@ def process_bulk_orders_csv(self, csv_data_string):
                 'message': f'Processing record {index + 1} of {total_orders}'
             }
         )
+        time.sleep(0.1)  
+
    
     return {
         'status': 'COMPLETED',
@@ -73,7 +75,7 @@ def process_bulk_orders_json(self, orders_data):
             state='PROGRESS',
             meta={'current_progress': index + 1, 'total_records': total_orders}
         )
-   
+        time.sleep(0.1)  
     return {
         'status': 'COMPLETED',
         'total_records': total_orders,
