@@ -1,0 +1,22 @@
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+**File: `.gitignore`**
+```
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+venv/
+.env
+
+# Database
+db.sqlite3
+*.sqlite3
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store

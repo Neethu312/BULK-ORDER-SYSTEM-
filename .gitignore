@@ -1,0 +1,23 @@
+# Python & Django Core
+__pycache__/
+*.pyc
+
+# Virtual Environment (You are using 'venv')
+venv/
+
+# Database
+db.sqlite3
+
+# Celery
+celerybeat-schedule
+
+# IDE and Editor Configuration
+.vscode/
+.idea/
+
+# Environment Variables (for future secrets)
+.env
+
+# Operating System Files
+.DS_Store
+Thumbs.db
