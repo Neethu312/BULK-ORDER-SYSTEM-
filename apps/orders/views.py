@@ -261,77 +261,115 @@ class OrderDetail(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# class OrderBulkUploadView(APIView):
-   
-#     def post(self, request, *args, **kwargs):
-#         orders_data = request.data
-        
-#         if not isinstance(orders_data, list):
-#             response = {
-#                 "success": False,
-#                 "status_code": status.HTTP_400_BAD_REQUEST,
-#                 "message": "Invalid data format",
-#                 "data": None,
-#                 "errors": {"detail": "Request body must be a list of order objects."}
-#             }
-#             return Response(response, status=status.HTTP_400_BAD_REQUEST)
-
-#         transaction.on_commit(lambda: start_task(request, orders_data))
-#         response = {
-#             "success": True,
-#             "status_code": status.HTTP_202_ACCEPTED,
-#             "message": "bulk order request is being processed.",
-#             "data": None,
-#             "errors": None
-#         }
-#         return Response(response, status=status.HTTP_202_ACCEPTED)
 
 logger = logging.getLogger(__name__)
 
+# class OrderBulkUploadView(APIView):
+#     parser_classes = (JSONParser, MultiPartParser, FormParser)
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self, request, *args, **kwargs):
+        
+#         if 'file' in request.FILES:
+#             csv_file = request.FILES['file']
+            
+#             try:
+#                 csv_content_string = csv_file.read().decode('utf-8')
+#             except UnicodeDecodeError:
+#                 return Response({
+#                     "success": False, 
+#                     "status_code": status.HTTP_400_BAD_REQUEST,
+#                     "message": "Invalid file encoding. Please use UTF-8.",
+#                     "data": None, "errors": {"detail": "File encoding is not valid."}
+#                 }, status=status.HTTP_400_BAD_REQUEST)
+
+#             # transaction.on_commit(lambda: start_task(request, csv_content_string, process_bulk_orders_csv))
+#             task_id = start_task(request, csv_content_string, process_bulk_orders_csv)
+
+#         else:
+#             orders_data = request.data
+#             if not isinstance(orders_data, list):
+#                 return Response({
+#                     "success": False, 
+#                     "status_code": status.HTTP_400_BAD_REQUEST,
+#                     "message": "Invalid data format. A list of objects is expected.",
+#                     "data": None, "errors": {"detail": "The provided JSON body is not a list."}
+#                 }, status=status.HTTP_400_BAD_REQUEST)
+            
+#             # transaction.on_commit(lambda: start_task(request, orders_data, process_bulk_orders_json))
+#             task_id = start_task(request, orders_data, process_bulk_orders_json)
+
+#         return Response({
+#             "success": True,
+#             "status_code": status.HTTP_202_ACCEPTED,
+#             "message": "Your bulk order request has been accepted and is being processed.",
+#             "data": task_id,
+#             "errors": None
+#         }, status=status.HTTP_202_ACCEPTED)
+
+
+
 class OrderBulkUploadView(APIView):
+    
     parser_classes = (JSONParser, MultiPartParser, FormParser)
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        
-        if 'file' in request.FILES:
-            csv_file = request.FILES['file']
+        try:
             
-            try:
-                csv_content_string = csv_file.read().decode('utf-8')
-            except UnicodeDecodeError:
-                return Response({
-                    "success": False, 
-                    "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "Invalid file encoding. Please use UTF-8.",
-                    "data": None, "errors": {"detail": "File encoding is not valid."}
-                }, status=status.HTTP_400_BAD_REQUEST)
+            if 'file' in request.FILES:
+                csv_file = request.FILES['file']
+                try:
+                    csv_content_string = csv_file.read().decode('utf-8')
+                except:
+                    logger.warning(f"Invalid file encoding uploaded by {request.user}")
+                    return Response({
+                        "success": False,
+                        "status_code": status.HTTP_400_BAD_REQUEST,
+                        "message": "Invalid file encoding. Please use UTF-8.",
+                        "data": None,
+                        "errors": {"detail": "File encoding is not valid."}
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
-            # transaction.on_commit(lambda: start_task(request, csv_content_string, process_bulk_orders_csv))
-            task_id = start_task(request, csv_content_string, process_bulk_orders_csv)
+                logger.info(f"User {request.user} uploaded CSV for bulk processing")
+                task_id = start_task(request, csv_content_string, process_bulk_orders_csv)
 
-        else:
-            orders_data = request.data
-            if not isinstance(orders_data, list):
-                return Response({
-                    "success": False, 
-                    "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "Invalid data format. A list of objects is expected.",
-                    "data": None, "errors": {"detail": "The provided JSON body is not a list."}
-                }, status=status.HTTP_400_BAD_REQUEST)
             
-            # transaction.on_commit(lambda: start_task(request, orders_data, process_bulk_orders_json))
-            task_id = start_task(request, orders_data, process_bulk_orders_json)
+            else:
+                orders_data = request.data
+                if not isinstance(orders_data, list):
+                    logger.warning(f"Invalid JSON structure uploaded by {request.user}")
+                    return Response({
+                        "success": False,
+                        "status_code": status.HTTP_400_BAD_REQUEST,
+                        "message": "Invalid data format. A list of objects is expected.",
+                        "data": None,
+                        "errors": {"detail": "The provided JSON body is not a list."}
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({
-            "success": True,
-            "status_code": status.HTTP_202_ACCEPTED,
-            "message": "Your bulk order request has been accepted and is being processed.",
-            "data": task_id,
-            "errors": None
-        }, status=status.HTTP_202_ACCEPTED)
+                logger.info(f"User {request.user} uploaded JSON for bulk processing")
+                task_id = start_task(request, orders_data, process_bulk_orders_json)
 
+            
+            logger.info(f"Bulk task {task_id} created successfully by {request.user}")
 
+            return Response({
+                "success": True,
+                "status_code": status.HTTP_202_ACCEPTED,
+                "message": "Your bulk order request has been accepted and is being processed.",
+                "data": {"task_id": task_id},
+                "errors": None
+            }, status=status.HTTP_202_ACCEPTED)
+
+        except Exception as e:
+            logger.exception(f"Bulk upload failed for user {request.user}: {e}")
+            return Response({
+                "success": False,
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error starting bulk upload.",
+                "data": None,
+                "errors": {"detail": str(e)}
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class TaskListView(APIView):
     
@@ -349,14 +387,48 @@ class TaskListView(APIView):
         return Response(response)
 
 
-class TaskStatusView(APIView): 
+# class TaskStatusView(APIView): 
+    
+#     def get(self, request, task_id, *args, **kwargs):
+       
+#         try:
+#             TaskTracker.objects.get(user=request.user, task_id=task_id)
+#         except TaskTracker.DoesNotExist:
+           
+#             response = {
+#                 "success": False,
+#                 "status_code": status.HTTP_404_NOT_FOUND,
+#                 "message": "Task not found or permission denied.",
+#                 "data": None,
+#                 "errors": {"detail": "A task with this ID was not found for the current user."}
+#             }
+#             return Response(response, status=status.HTTP_404_NOT_FOUND)
+
+        
+#         task_result = celery_app.AsyncResult(task_id)
+#         data = {
+#             "task_id": task_id,
+#             "task_status": task_result.status,
+#             "task_result": task_result.result
+#         }
+
+#         response = {
+#             "success": True,
+#             "status_code": status.HTTP_200_OK,
+#             "message": "Task status retrieved successfully.",
+#             "data": data,
+#             "errors": None
+#         }
+#         return Response(response, status=status.HTTP_200_OK)
+
+class TaskStatusView(APIView):
     
     def get(self, request, task_id, *args, **kwargs):
-       
         try:
+            
             TaskTracker.objects.get(user=request.user, task_id=task_id)
         except TaskTracker.DoesNotExist:
-           
+            logger.warning(f"User {request.user} tried to access unauthorized or missing task {task_id}")
             response = {
                 "success": False,
                 "status_code": status.HTTP_404_NOT_FOUND,
@@ -366,21 +438,41 @@ class TaskStatusView(APIView):
             }
             return Response(response, status=status.HTTP_404_NOT_FOUND)
 
-        
-        task_result = celery_app.AsyncResult(task_id)
-        data = {
-            "task_id": task_id,
-            "task_status": task_result.status,
-            "task_result": task_result.result
-        }
+        try:
+          
+            task_result = celery_app.AsyncResult(task_id)
+            info = task_result.info or {}
+            current = info.get("current_progress", 0)
+            total = info.get("total_records", 0)
+            percentage = round((current / total) * 100, 2) if total else 0
 
-        response = {
-            "success": True,
-            "status_code": status.HTTP_200_OK,
-            "message": "Task status retrieved successfully.",
-            "data": data,
-            "errors": None
-        }
-        return Response(response, status=status.HTTP_200_OK)
+            data = {
+                "task_id": task_id,
+                "task_status": task_result.status,
+                "current_progress": current,
+                "total_records": total,
+                "percentage_complete": percentage,
+                "task_result": task_result.result if task_result.ready() else None
+            }
 
+            response = {
+                "success": True,
+                "status_code": status.HTTP_200_OK,
+                "message": "Task status retrieved successfully.",
+                "data": data,
+                "errors": None
+            }
 
+            logger.info(f"User {request.user} checked status for task {task_id}: {task_result.status}")
+            return Response(response, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.exception(f"Error fetching task status for user {request.user}, task {task_id}: {e}")
+            return Response({
+                "success": False,
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error retrieving task status.",
+                "data": None,
+                "errors": {"detail": str(e)}
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+ 
